@@ -1,0 +1,39 @@
+# ---------- Entorno y secretos ----------
+.env
+.env.*
+!.env.example
+
+# ---------- Python ----------
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+.eggs/
+build/
+dist/
+.venv/
+venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+htmlcov/
+
+# ---------- Datos locales (FAISS, dumps, BD local) ----------
+data/
+dumps/
+pgdata/
+*.sqlite3
+
+# ---------- IDE / editores ----------
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# ---------- OS ----------
+.DS_Store
+Thumbs.db
+
+# ---------- Logs ----------
+*.log

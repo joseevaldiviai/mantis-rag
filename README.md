@@ -31,6 +31,16 @@ Los embeddings son **contextuales al dominio**: al indexar una máquina se
 embebe "MAQUINARIA: nombre (código) · ubicación · estado · descripción", y en
 las OTs se incluye máquina, prioridad y estado.
 
+## Documentación
+
+- **`docs/MANUAL.md`** — manual para aprender cómo funciona un RAG y cómo
+  funciona este sistema en concreto (conceptos, flujos, recorrido con curl y
+  experimentos para seguir aprendiendo).
+- **`docs/AUDITORIA.md`** — auditoría general del código (hallazgos por
+  severidad y prioridades sugeridas).
+- **`docs/MANUAL_LANGCHAIN_LANGGRAPH.md`** — qué es LangChain y LangGraph,
+  diferencias, cuándo usar cada uno y ejemplos aplicados a este proyecto.
+
 ## Puesta en marcha
 
 ```bash
@@ -44,49 +54,55 @@ API en `http://localhost:8000`, documentación en `http://localhost:8000/docs`.
 
 ```bash
 # 1. Registrar maquinaria (se indexa automáticamente en FAISS)
-curl -X POST http://localhost:8000/machines \
+curl -X POST http://localhost:8000/api/v1/machines \
   -H "Content-Type: application/json" \
   -d '{"code":"P-101","name":"Bomba centrífuga","description":"Bomba de proceso de 30 HP…","location":"Planta A"}'
 
 # 2. Registrar una orden de trabajo (también se indexa)
-curl -X POST http://localhost:8000/work-orders \
+curl -X POST http://localhost:8000/api/v1/work-orders \
   -H "Content-Type: application/json" \
   -d '{"machine_id":1,"title":"Cambio de rodamientos","description":"Ruido en el eje…","priority":"high"}'
 
 # 3. Subir un documento, opcionalmente adjunto a una máquina u OT
-curl -F "file=@manual_bomba.pdf" -F "machine_id=1" http://localhost:8000/ingest
+curl -F "file=@manual_bomba.pdf" -F "machine_id=1" http://localhost:8000/api/v1/ingest
 
 # 4. Crear una sesión de chat (opcional: acotada a una entidad)
-curl -X POST http://localhost:8000/chat/sessions \
+curl -X POST http://localhost:8000/api/v1/chat/sessions \
   -H "Content-Type: application/json" \
   -d '{"entity_type":"machine","entity_id":1,"title":"Diagnóstico bomba P-101"}'
 
 # 5. Preguntar dentro de la sesión (devuelve respuesta + fuentes con score)
-curl -X POST http://localhost:8000/chat/sessions/<session_id>/messages \
+curl -X POST http://localhost:8000/api/v1/chat/sessions/<session_id>/messages \
   -H "Content-Type: application/json" \
   -d '{"question":"¿Qué mantenimiento requiere la bomba P-101?","top_k":5}'
 
 # 6. Ver historial / estado
-curl http://localhost:8000/chat/sessions/<session_id>/messages
+curl http://localhost:8000/api/v1/chat/sessions/<session_id>/messages
 ```
 
 ## Endpoints
 
 | Método | Ruta | Descripción |
 |---|---|---|
-| `POST` | `/machines` | Registra maquinaria y la indexa (espacio `machines`) |
-| `GET` | `/machines` | Lista maquinarias |
-| `PATCH` | `/machines/{id}` | Actualiza la máquina y re-indexa en FAISS si cambió el texto indexado |
-| `POST` | `/work-orders` | Registra OT y la indexa (espacio `work_orders`) |
-| `GET` | `/work-orders` | Lista órdenes de trabajo |
-| `PATCH` | `/work-orders/{id}` | Actualiza la OT y re-indexa en FAISS si cambió el texto indexado |
-| `POST` | `/ingest` | Sube documento (txt/md/json/pdf/docx/doc), opcionalmente ligado a máquina/OT. Guarda el original si hay storage configurado |
-| `GET` | `/documents` | Lista documentos (filtro opcional por entidad) |
-| `GET` | `/documents/{id}/file` | Descarga el archivo original desde Firebase Storage / GCS |
-| `POST` | `/chat/sessions` | Crea sesión, opcionalmente acotada a una entidad |
-| `POST` | `/chat/sessions/{id}/messages` | Pregunta → busca en FAISS, genera respuesta, guarda citas |
-| `GET` | `/chat/sessions/{id}/messages` | Historial de la sesión |
-| `POST` | `/reindex` | Reconstruye el/los índice(s) FAISS desde `rag_chunks` (red de seguridad) |
+Toda la API vive bajo el prefijo de versión `/api/v1` (los clientes actuales
+se actualizarán a `/api/v2` cuando exista; el versionado se gestiona en
+`app/routers/v1/__init__.py`). `GET /health` queda fuera de versiones.
+
+| Método | Ruta | Descripción |
+|---|---|---|
+| `POST` | `/api/v1/machines` | Registra maquinaria y la indexa (espacio `machines`) |
+| `GET` | `/api/v1/machines` | Lista maquinarias |
+| `PATCH` | `/api/v1/machines/{id}` | Actualiza la máquina y re-indexa en FAISS si cambió el texto indexado |
+| `POST` | `/api/v1/work-orders` | Registra OT y la indexa (espacio `work_orders`) |
+| `GET` | `/api/v1/work-orders` | Lista órdenes de trabajo |
+| `PATCH` | `/api/v1/work-orders/{id}` | Actualiza la OT y re-indexa en FAISS si cambió el texto indexado |
+| `POST` | `/api/v1/ingest` | Sube documento (txt/md/json/pdf/docx/doc), opcionalmente ligado a máquina/OT. Guarda el original si hay storage configurado |
+| `GET` | `/api/v1/documents` | Lista documentos (filtro opcional por entidad) |
+| `GET` | `/api/v1/documents/{id}/file` | Descarga el archivo original desde Firebase Storage / GCS |
+| `POST` | `/api/v1/chat/sessions` | Crea sesión, opcionalmente acotada a una entidad |
+| `POST` | `/api/v1/chat/sessions/{id}/messages` | Pregunta → busca en FAISS, genera respuesta, guarda citas |
+| `GET` | `/api/v1/chat/sessions/{id}/messages` | Historial de la sesión |
+| `POST` | `/api/v1/reindex` | Reconstruye el/los índice(s) FAISS desde `rag_chunks` (red de seguridad) |
 | `GET` | `/health` | Estado + espacios FAISS activos |
 
 ## Re-indexado automático
@@ -105,7 +121,7 @@ La respuesta del `PATCH` incluye `reindexed` y `num_chunks` para verlo.
 
 ```bash
 # Cambiar el estado de una máquina -> se re-indexa sola
-curl -X PATCH http://localhost:8000/machines/1 \
+curl -X PATCH http://localhost:8000/api/v1/machines/1 \
   -H "Content-Type: application/json" \
   -d '{"status":"maintenance"}'
 ```
@@ -137,19 +153,33 @@ logs_table      eventos info/error
 
 ## Estructura
 
+La app se divide en capas: **core** (infraestructura), **schemas** (contratos
+Pydantic), **library** (componentes técnicos) y **services** (lógica de
+negocio). Los endpoints se manejan **por versiones** (`routers/v1/` → `/api/v1`).
+Cada carpeta tiene su propio README con su funcionalidad.
+
 ```
 app/
 ├── main.py            # FastAPI + lifespan (tablas + carga/reconstrucción de FAISS)
-├── config.py          # Settings
-├── db.py              # Engine, sesión
-├── models.py          # machines, work_orders, documents, rag_chunks, chat, citations, logs
-├── schemas.py         # Pydantic
-├── embeddings.py      # OpenAIEmbeddings, ChatOpenAI, cadena QA (prompt CMMS)
-├── faiss_store.py     # Espacios FAISS, persistencia y búsqueda con ranking
-├── indexing.py        # Indexación contextual de máquinas/OTs/documentos
-├── qa_service.py      # Búsqueda multi-espacio + respuesta + citation_logs
-├── log.py             # logs_table
-└── routers/           # machines, work_orders, ingest, chat
+├── core/              # Infraestructura base
+│   ├── config.py      #   Settings (variables de entorno)
+│   ├── db.py          #   Engine, sesión, Base, init_db
+│   ├── models.py      #   ORM: machines, work_orders, documents, rag_chunks, chat, citations, logs
+│   └── log.py         #   logs_table
+├── schemas/           # Contratos Pydantic, por dominio (machine, work_order, ingest, chat, admin)
+├── library/           # Componentes técnicos reutilizables
+│   ├── embeddings.py  #   OpenAIEmbeddings, ChatOpenAI, cadena QA (prompt CMMS)
+│   ├── faiss_store.py #   Espacios FAISS, persistencia y búsqueda con ranking
+│   ├── indexing.py    #   Indexación contextual de máquinas/OTs/documentos
+│   └── storage.py     #   Archivo original en GCS / Firebase Storage
+├── services/          # Lógica de negocio (qa_service: RAG + citation_logs)
+└── routers/
+    └── v1/            # API versión 1 (prefijo /api/v1)
+        ├── machines.py
+        ├── work_orders.py
+        ├── ingest.py
+        ├── chat.py
+        └── admin.py
 ```
 
 ## Almacenamiento del archivo original (Firebase Storage)

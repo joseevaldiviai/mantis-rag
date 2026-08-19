@@ -9,10 +9,10 @@ from __future__ import annotations
 
 from sqlalchemy.orm import Session
 
-from . import faiss_store
-from .config import settings
-from .embeddings import embeddings, qa_chain
-from .models import ChatMessage, ChatSession, CitationLog
+from ..core.config import settings
+from ..core.models import ChatMessage, ChatSession, CitationLog
+from ..library import faiss_store
+from ..library.embeddings import embeddings, qa_chain
 
 
 def _search(query_embedding: list[float], k: int, filters: dict | None) -> list[dict]:

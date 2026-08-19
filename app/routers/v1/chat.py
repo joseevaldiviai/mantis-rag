@@ -2,17 +2,17 @@ import uuid
 
 from fastapi import APIRouter, HTTPException
 
-from ..db import SessionLocal
-from ..log import log_event
-from ..models import ChatMessage, ChatSession, Machine, WorkOrder
-from ..qa_service import answer_question
-from ..schemas import (
+from ...core.db import SessionLocal
+from ...core.log import log_event
+from ...core.models import ChatMessage, ChatSession, Machine, WorkOrder
+from ...schemas import (
     ChatMessageRecord,
     ChatMessageRequest,
     ChatMessageResponse,
     ChatSessionCreate,
     ChatSessionResponse,
 )
+from ...services.qa_service import answer_question
 
 router = APIRouter(prefix="/chat", tags=["chat"])
 

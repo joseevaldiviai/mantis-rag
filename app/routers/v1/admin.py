@@ -1,8 +1,8 @@
 from fastapi import APIRouter, HTTPException
 
-from .. import faiss_store
-from ..log import log_event
-from ..schemas import ReindexRequest, ReindexResponse
+from ...core.log import log_event
+from ...library import faiss_store
+from ...schemas import ReindexRequest, ReindexResponse
 
 router = APIRouter(tags=["admin"])
 

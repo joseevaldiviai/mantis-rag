@@ -32,9 +32,9 @@ from sqlalchemy import create_engine, select
 from sqlalchemy.dialects import postgresql
 from sqlalchemy.schema import CreateTable
 
-from app import models  # noqa: F401  # registra los modelos en Base.metadata
-from app.config import settings
-from app.db import Base
+from app.core import models  # noqa: F401  # registra los modelos en Base.metadata
+from app.core.config import settings
+from app.core.db import Base
 
 INSERT_BATCH = 100  # filas por sentencia INSERT
 

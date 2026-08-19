@@ -16,7 +16,7 @@ import shutil
 
 from langchain_community.vectorstores import FAISS
 
-from .config import settings
+from ..core.config import settings
 from .embeddings import embeddings
 
 _stores: dict[str, FAISS] = {}
@@ -40,8 +40,8 @@ def get(space: str) -> FAISS | None:
 
 def _build_from_db(space: str) -> int:
     """Construye el índice de un espacio desde rag_chunks. Devuelve nº de chunks."""
-    from .db import SessionLocal
-    from .models import RagChunk
+    from ..core.db import SessionLocal
+    from ..core.models import RagChunk
 
     with SessionLocal() as session:
         chunks = (

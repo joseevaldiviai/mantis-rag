@@ -2,12 +2,12 @@ import uuid
 
 from fastapi import APIRouter, File, Form, HTTPException, Response, UploadFile
 
-from .. import storage
-from ..db import SessionLocal
-from ..indexing import extract_text, index_document, split_text
-from ..log import log_event
-from ..models import Document, Machine, WorkOrder
-from ..schemas import DocumentResponse, IngestResponse
+from ...core.db import SessionLocal
+from ...core.log import log_event
+from ...core.models import Document, Machine, WorkOrder
+from ...library import storage
+from ...library.indexing import extract_text, index_document, split_text
+from ...schemas import DocumentResponse, IngestResponse
 
 router = APIRouter(tags=["ingest"])
 

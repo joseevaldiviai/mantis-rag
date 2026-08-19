@@ -1,10 +1,10 @@
 from fastapi import APIRouter, HTTPException
 
-from ..db import SessionLocal
-from ..indexing import index_work_order, reindex_work_order
-from ..log import log_event
-from ..models import Machine, WorkOrder
-from ..schemas import WorkOrderCreate, WorkOrderResponse, WorkOrderUpdate, WorkOrderUpdateResponse
+from ...core.db import SessionLocal
+from ...core.log import log_event
+from ...core.models import Machine, WorkOrder
+from ...library.indexing import index_work_order, reindex_work_order
+from ...schemas import WorkOrderCreate, WorkOrderResponse, WorkOrderUpdate, WorkOrderUpdateResponse
 
 router = APIRouter(prefix="/work-orders", tags=["work-orders"])
 

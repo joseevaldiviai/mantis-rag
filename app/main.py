@@ -2,9 +2,9 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 
-from . import faiss_store
-from .db import init_db
-from .routers import admin, chat, ingest, machines, work_orders
+from .core.db import init_db
+from .library import faiss_store
+from .routers.v1 import api_router
 
 
 @asynccontextmanager
@@ -24,11 +24,9 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-app.include_router(machines.router)
-app.include_router(work_orders.router)
-app.include_router(ingest.router)
-app.include_router(chat.router)
-app.include_router(admin.router)
+# Toda la API vive bajo /api/v1 (ver app/routers/v1/__init__.py).
+# El endpoint /health se mantiene fuera de versiones (check de infraestructura).
+app.include_router(api_router)
 
 
 @app.get("/health")

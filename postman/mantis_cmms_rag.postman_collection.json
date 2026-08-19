@@ -1,0 +1,336 @@
+{
+  "info": {
+    "_postman_id": "c9b0e5f4-1a2b-4c3d-8e5f-6a7b8c9d0e1f",
+    "name": "Mantis CMMS RAG API",
+    "description": "Colección para probar la API de Mantis CMMS RAG (versión v1, prefijo /api/v1).\n\n## Cómo usarla\n\n1. Importa este archivo en Postman (File → Import).\n2. En la pestaña de la colección → Variables, revisa que `baseUrl` apunte a tu API (por defecto http://localhost:8000).\n3. Ejecuta las peticiones **en orden**: los tests guardan automáticamente los ids (machine_id, work_order_id, session_id, document_id) como variables de colección.\n4. En `Ingest documento`, cambia la ruta del archivo en el campo `file` (form-data) por un PDF/DOCX/TXT real de tu máquina.\n\nFlujo sugerido: Health → Create machine → Create work order → Ingest documento → Create chat session → Send message → Chat history.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:8000" },
+    { "key": "machine_id", "value": "1" },
+    { "key": "work_order_id", "value": "1" },
+    { "key": "document_id", "value": "" },
+    { "key": "session_id", "value": "" }
+  ],
+  "item": [
+    {
+      "name": "Health check",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/health",
+          "host": ["{{baseUrl}}"],
+          "path": ["health"]
+        },
+        "description": "Estado de la API y espacios FAISS activos (no está versionado)."
+      },
+      "response": []
+    },
+    {
+      "name": "Create machine",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"code\": \"P-101\",\n  \"name\": \"Bomba centrífuga\",\n  \"description\": \"Bomba de proceso de 30 HP para el circuito de refrigeración.\",\n  \"location\": \"Planta A\",\n  \"status\": \"operational\",\n  \"metadata\": { \"fabricante\": \"Grundfos\", \"anio\": 2019 }\n}",
+          "options": { "raw": { "language": "json" } }
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/machines",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "v1", "machines"]
+        },
+        "description": "Registra una maquinaria y la indexa automáticamente en FAISS (espacio machines). El test guarda el `id` en la variable `machine_id`."
+      },
+      "response": [],
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test(\"Status 201\", function () { pm.response.to.have.status(201); });",
+              "const data = pm.response.json();",
+              "if (data.id) pm.collectionVariables.set(\"machine_id\", data.id);"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ]
+    },
+    {
+      "name": "List machines",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/machines",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "v1", "machines"]
+        },
+        "description": "Lista todas las maquinarias."
+      },
+      "response": []
+    },
+    {
+      "name": "Update machine (reindex)",
+      "request": {
+        "method": "PATCH",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"status\": \"maintenance\"\n}",
+          "options": { "raw": { "language": "json" } }
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/machines/{{machine_id}}",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "v1", "machines", "{{machine_id}}"]
+        },
+        "description": "Actualiza una máquina. Si cambia el texto indexado (estado, descripción…), se re-indexa sola en FAISS. La respuesta incluye `reindexed` y `num_chunks`."
+      },
+      "response": [],
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test(\"Status 200\", function () { pm.response.to.have.status(200); });",
+              "pm.test(\"Devuelve reindexed\", function () { pm.expect(pm.response.json()).to.have.property(\"reindexed\"); });"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Create work order",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"machine_id\": {{machine_id}},\n  \"title\": \"Cambio de rodamientos\",\n  \"description\": \"Ruido en el eje al arrancar. Revisar y reemplazar rodamientos del lado de acoplamiento.\",\n  \"priority\": \"high\",\n  \"status\": \"open\",\n  \"assigned_to\": \"Juan Pérez\"\n}",
+          "options": { "raw": { "language": "json" } }
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/work-orders",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "v1", "work-orders"]
+        },
+        "description": "Registra una orden de trabajo ligada a la máquina `{{machine_id}}` y la indexa en FAISS (espacio work_orders). El test guarda el `id` en `work_order_id`."
+      },
+      "response": [],
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test(\"Status 201\", function () { pm.response.to.have.status(201); });",
+              "const data = pm.response.json();",
+              "if (data.id) pm.collectionVariables.set(\"work_order_id\", data.id);"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ]
+    },
+    {
+      "name": "List work orders",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/work-orders",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "v1", "work-orders"]
+        },
+        "description": "Lista todas las órdenes de trabajo."
+      },
+      "response": []
+    },
+    {
+      "name": "Update work order",
+      "request": {
+        "method": "PATCH",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"status\": \"in_progress\"\n}",
+          "options": { "raw": { "language": "json" } }
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/work-orders/{{work_order_id}}",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "v1", "work-orders", "{{work_order_id}}"]
+        },
+        "description": "Actualiza una OT. Si cambia el texto indexado, se re-indexa sola."
+      },
+      "response": []
+    },
+    {
+      "name": "Ingest documento",
+      "request": {
+        "method": "POST",
+        "header": [],
+        "body": {
+          "mode": "formdata",
+          "formdata": [
+            {
+              "key": "file",
+              "type": "file",
+              "src": "/ruta/al/manual_bomba.pdf",
+              "description": "Cambia esta ruta por un archivo real (pdf, docx, doc, txt, md, json, csv)."
+            },
+            { "key": "machine_id", "value": "{{machine_id}}" }
+          ]
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/ingest",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "v1", "ingest"]
+        },
+        "description": "Sube un documento, lo parte en chunks y lo indexa en FAISS (espacio documents). Opcionalmente se adjunta a una máquina (`machine_id`) o a una OT (`work_order_id`, no ambos). El test guarda `document_id`."
+      },
+      "response": [],
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test(\"Status 200\", function () { pm.response.to.have.status(200); });",
+              "const data = pm.response.json();",
+              "if (data.document_id) pm.collectionVariables.set(\"document_id\", data.document_id);"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ]
+    },
+    {
+      "name": "List documents",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/documents",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "v1", "documents"]
+        },
+        "description": "Lista los documentos subidos. Filtros opcionales por query: `?entity_type=machine&entity_id=1`."
+      },
+      "response": []
+    },
+    {
+      "name": "Download documento original",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/documents/{{document_id}}/file",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "v1", "documents", "{{document_id}}", "file"]
+        },
+        "description": "Descarga el archivo original desde Firebase Storage / GCS. Requiere que el documento tenga `storage_path` (GCS configurado al subirlo)."
+      },
+      "response": []
+    },
+    {
+      "name": "Create chat session",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"title\": \"Diagnóstico bomba P-101\",\n  \"entity_type\": \"machine\",\n  \"entity_id\": {{machine_id}}\n}",
+          "options": { "raw": { "language": "json" } }
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/chat/sessions",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "v1", "chat", "sessions"]
+        },
+        "description": "Crea una sesión de chat acotada a la máquina `{{machine_id}}` (todas las preguntas buscarán en esa entidad). El test guarda el `id` en `session_id`."
+      },
+      "response": [],
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test(\"Status 201\", function () { pm.response.to.have.status(201); });",
+              "const data = pm.response.json();",
+              "if (data.id) pm.collectionVariables.set(\"session_id\", data.id);"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Send message (pregunta RAG)",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"question\": \"¿Qué mantenimiento requiere la bomba P-101?\",\n  \"top_k\": 5,\n  \"filters\": { \"machine_id\": {{machine_id}} }\n}",
+          "options": { "raw": { "language": "json" } }
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/chat/sessions/{{session_id}}/messages",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "v1", "chat", "sessions", "{{session_id}}", "messages"]
+        },
+        "description": "Hace una pregunta dentro de la sesión: busca en FAISS, genera la respuesta con el LLM y devuelve las fuentes con su score. `filters` es opcional (si se omite, se usa el ámbito de la sesión)."
+      },
+      "response": [],
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test(\"Status 200\", function () { pm.response.to.have.status(200); });",
+              "pm.test(\"Devuelve respuesta\", function () { pm.expect(pm.response.json().answer).to.be.a(\"string\"); });"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Chat history",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/chat/sessions/{{session_id}}/messages",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "v1", "chat", "sessions", "{{session_id}}", "messages"]
+        },
+        "description": "Historial de mensajes de la sesión (user/assistant)."
+      },
+      "response": []
+    },
+    {
+      "name": "Reindex FAISS",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"space\": \"machines\"\n}",
+          "options": { "raw": { "language": "json" } }
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/reindex",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "v1", "reindex"]
+        },
+        "description": "Reconstruye el/los índice(s) FAISS desde rag_chunks. Red de seguridad si el índice se desincroniza. `space` puede ser \"machines\", \"work_orders\", \"documents\" o null (todos)."
+      },
+      "response": []
+    }
+  ]
+}

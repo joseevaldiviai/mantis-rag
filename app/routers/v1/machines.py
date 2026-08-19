@@ -1,10 +1,10 @@
 from fastapi import APIRouter, HTTPException
 
-from ..db import SessionLocal
-from ..indexing import index_machine, reindex_machine
-from ..log import log_event
-from ..models import Machine
-from ..schemas import MachineCreate, MachineResponse, MachineUpdate, MachineUpdateResponse
+from ...core.db import SessionLocal
+from ...core.log import log_event
+from ...core.models import Machine
+from ...library.indexing import index_machine, reindex_machine
+from ...schemas import MachineCreate, MachineResponse, MachineUpdate, MachineUpdateResponse
 
 router = APIRouter(prefix="/machines", tags=["machines"])
 

@@ -24,9 +24,9 @@ from langchain_text_splitters import RecursiveCharacterTextSplitter
 from sqlalchemy.orm import Session
 
 from . import faiss_store
-from .config import settings
+from ..core.config import settings
+from ..core.models import Document, Machine, RagChunk, WorkOrder
 from .embeddings import embeddings
-from .models import Document, Machine, RagChunk, WorkOrder
 
 
 # ---------------------------------------------------------------------------
